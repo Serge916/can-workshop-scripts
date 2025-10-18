@@ -17,11 +17,15 @@ try:
     can1 = can.interface.Bus(channel = 'can1', bustype = 'socketcan')
     # Create a CAN mesage struct
     msg = can.Message(is_extended_id=False, arbitration_id=0x123, data=[0, 1, 2, 3, 4, 5, 6, 9])
-    # Send the message from CAN0
+    msg1 = can.Message(is_extended_id=False, arbitration_id=0x123, data=[0, 1, 2, 3, 4, 5, 6, 4])
+    # Send the messages from CAN0
     can0.send(msg)
-    # Receive the message from CAN1
-    msg=can1.recv()
-    print(msg)
+    can0.send(msg1)
+    # Receive the message from CAN1. Takes one message per function call
+    recMsg=can1.recv()
+    recMsg1=can1.recv()
+    print(recMsg)
+    print(recMsg1)
 finally:
     # Close the interface for a clean exit
     os.system('sudo ifconfig can0 down')
