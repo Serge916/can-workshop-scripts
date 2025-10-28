@@ -19,47 +19,67 @@ class N5CanController:
         # Start node
         self.send(identifier=0x0, data=N5CanController.formatNetworkManagement(cmd=0x01, nodeID=0x01))
         # Mode of operation = profile velocity (3)
-        self.send(identifier=0x601, data=N5CanController.formatServiceDataObject(
+        self.send(identifier=0x601, data=N5CanController.formatServiceDataObjectDownload(
             cmd=0x2F, idx=0x6060, subidx=0x00, data=0x03
         ))
         # Ready to switch on
-        self.send(identifier=0x601, data=N5CanController.formatServiceDataObject(
+        self.send(identifier=0x601, data=N5CanController.formatServiceDataObjectDownload(
             cmd=0x2B, idx=0x6040, subidx=0x00, data=0x0006
         ))
         # Switched on
-        self.send(identifier=0x601, data=N5CanController.formatServiceDataObject(
+        self.send(identifier=0x601, data=N5CanController.formatServiceDataObjectDownload(
             cmd=0x2B, idx=0x6040, subidx=0x00, data=0x0007
         ))
         # Operation enabled
-        self.send(identifier=0x601, data=N5CanController.formatServiceDataObject(
+        self.send(identifier=0x601, data=N5CanController.formatServiceDataObjectDownload(
             cmd=0x2B, idx=0x6040, subidx=0x00, data=0x000F
         ))
         # Set profile acceleration (6083h) = 1000
-        self.send(identifier=0x601, data=N5CanController.formatServiceDataObject(
+        self.send(identifier=0x601, data=N5CanController.formatServiceDataObjectDownload(
             cmd=0x23, idx=0x6083, subidx=0x00, data=1000
         ))
         # Set profile deceleration (6084h) = 1000
-        self.send(identifier=0x601, data=N5CanController.formatServiceDataObject(
+        self.send(identifier=0x601, data=N5CanController.formatServiceDataObjectDownload(
             cmd=0x23, idx=0x6084, subidx=0x00, data=1000
         ))
 
 
     def close(self):
-        # self.send(identifier=0x601, data=(0x2B40600006000000).to_bytes(8, byteorder='big'))
-        self.send(identifier=0x601, data=N5CanController.formatServiceDataObject(
+        self.send(identifier=0x601, data=N5CanController.formatServiceDataObjectDownload(
             cmd=0x2B, idx=0x6040, subidx=0x00, data=0x0006
         ))
         os.system(f"sudo ifconfig {self.interface} down")
 
     def setSpeed(self, speed:int):
         # Build SDO payload for object 6042h:00h (Vl Target Velocity)
-        payload = N5CanController.formatServiceDataObject(
+        payload = N5CanController.formatServiceDataObjectDownload(
             cmd=0x23,     # expedited, 4-byte data
             idx=0x60FF,   # target velocity object
             subidx=0x00,  # sub-index
             data=speed
         )
         self.send(identifier=0x601, data=payload)
+    
+    def getStatusWord(self) -> int:
+        """Read 6041h (Statusword) and return it as an int."""
+        # Initiate SDO upload               
+        self.send(identifier=0x601, data=N5CanController.formatServiceDataObjectUpload(
+            idx=0x6041,   # target velocity object
+            subidx=0x00,  # sub-index
+        ))
+
+        # Wait for SDO response
+        msg = self.recv()
+        while msg.arbitration_id != 0x581:
+            msg = self.recv()
+
+        if msg.data[0] == 0x80:
+            print(f"SDO Upload error code: {msg.data[4:8]}")
+
+        # Bytes 4–5 (little-endian) hold the Statusword
+        val = int.from_bytes(msg.data[4:6], 'little')
+        return val
+
 
 
     def send(self, identifier: int, data: bytes, extended_id:bool=False):
@@ -74,7 +94,7 @@ class N5CanController:
         return self.dev.recv()
 
     @staticmethod
-    def formatServiceDataObject(cmd: int, idx:int, subidx:int, data:int):
+    def formatServiceDataObjectDownload(cmd: int, idx:int, subidx:int, data:int):
         if cmd not in (0x2F,0x2B,0x27,0x23):
             raise(ValueError, "Not a valid CMD value.")
 
@@ -84,6 +104,14 @@ class N5CanController:
         # SDO messages must be 8-Byte long. In case it is not. Fill with 0
         data = data.to_bytes(4,'little', signed=True)
         return cmd+idx+subidx+data  
+
+    
+    @staticmethod
+    def formatServiceDataObjectUpload(idx:int, subidx:int):
+        idx = idx.to_bytes(2, 'little', signed=False)
+        subidx = subidx.to_bytes(1)
+        # SDO messages must be 8-Byte long. In case it is not. Fill with 0
+        return bytes([0x40])+idx+subidx+bytes(4)
 
     @staticmethod
     def formatNetworkManagement(cmd: int, nodeID:int):

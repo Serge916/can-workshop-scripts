@@ -10,24 +10,12 @@ can = N5CanController("can1")
 
 print("Motor is set up")
 try:
-    while True:
-        print("Moving forward for 2s")
-        can.setSpeed(200)   
-        time.sleep(2)
-        print("Faster for 2s")
-        can.setSpeed(500)   
-        time.sleep(2)
-        print("Stopping")
-        can.setSpeed(0)     
-        time.sleep(2)
-        print("Moving backward for 2s")
-        can.setSpeed(-200)  
-        time.sleep(2)
-        print("Faster for 2s")
-        can.setSpeed(-500)   
-        time.sleep(2)
-        print("Stopping")
-        can.setSpeed(0)     
-        time.sleep(2)
+    # Set up speed target
+    can.setSpeed(600)
+    # Check in StatusWord wether limit was reached   
+    while not (can.getStatusWord() & (1<<9)):
+        pass
+    print("Velocity reached. Now spinning for 5s")
+    time.sleep(5)
 finally:
     can.close()
