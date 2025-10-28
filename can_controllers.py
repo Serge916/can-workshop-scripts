@@ -1,15 +1,18 @@
 import os
 import can
 
-
+CAN_MAX_BITRATE = 1000000 #I'm setting it to CAN. Change it case of XL.
 
 class N5CanController:
 
-    def __init__(self):
+    def __init__(self, interface:str, bitrate:int=CAN_MAX_BITRATE):
+        if bitrate < 1 or bitrate > CAN_MAX_BITRATE:
+            raise(ValueError, "Choose a valid bitrate value.")
+        self.interface = interface
         # Set up the CAN interfaces on the system
-        os.system("sudo ip link set can1 type can bitrate 1000000")
-        os.system("sudo ifconfig can1 up")
-        self.dev = can.interface.Bus(channel="can1", bustype="socketcan")
+        os.system(f"sudo ip link set {self.interface} type can bitrate {bitrate}")
+        os.system(f"sudo ifconfig {self.interface} up")
+        self.dev = can.interface.Bus(channel=self.interface, bustype="socketcan")
         self._setupMotor()
 
     def _setupMotor(self):
@@ -42,8 +45,11 @@ class N5CanController:
 
 
     def close(self):
-        self.send(identifier=0x601, data=(0x2B40600006000000).to_bytes(8, byteorder='big'))
-        os.system("sudo ifconfig can1 down")
+        # self.send(identifier=0x601, data=(0x2B40600006000000).to_bytes(8, byteorder='big'))
+        self.send(identifier=0x601, data=N5CanController.formatServiceDataObject(
+            cmd=0x2B, idx=0x6040, subidx=0x00, data=0x0006
+        ))
+        os.system(f"sudo ifconfig {self.interface} down")
 
     def setSpeed(self, speed:int):
         # Build SDO payload for object 6042h:00h (Vl Target Velocity)
