@@ -6,12 +6,12 @@ class N5CanController:
 
     def __init__(self):
         # Set up the CAN interfaces on the system
-        os.system("sudo ip link set can1 type can bitrate 100000")
+        os.system("sudo ip link set can1 type can bitrate 1000000")
         os.system("sudo ifconfig can1 up")
         self.dev = can.interface.Bus(channel="can1", bustype="socketcan")
         self.setupMotor()
 
-    def __del__(self):
+    def close(self):
         self.send(identifier=0x601, data=0x2B40600006000000)
         os.system("sudo ifconfig can1 down")
 
@@ -33,7 +33,6 @@ class N5CanController:
             arbitration_id=identifier,
             data=data.to_bytes(len, byteorder="big"),
         )
-        print(msg)
         self.dev.send(msg)
 
     def recv(self):
