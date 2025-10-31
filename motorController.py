@@ -6,14 +6,14 @@ from can_controllers import N5CanController
 import time
 
 # Create CAN objects
-can = N5CanController("can1")
+can = N5CanController(interface="can1", nodeID=1)
 
 print("Motor is set up")
 try:
     # Set up speed target
     can.setSpeed(600)
-    # Check in StatusWord wether limit was reached   
-    while not (can.getStatusWord() & (1<<9)):
+    # Check in StatusWord wether limit was reached
+    while not (can.getStatusWord() & (1 << 9)):
         pass
     print("Velocity reached. Now spinning for 5s")
     time.sleep(5)
