@@ -231,7 +231,7 @@ class RoboteqCanController:
             ),
         )
 
-    def set_target_velocity(self, rpm: int, channel: int):
+    def setSpeed(self, rpm: int, channel: int):
         match channel:
             case 1:
                 idx = 0x60FF
